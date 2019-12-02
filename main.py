@@ -49,20 +49,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 self.show_info('请输入文件夹名')
 
-
     @pyqtSlot()
     def on_pushButton_2_clicked(self):
-        self.driver.switch_to.window(self.driver.window_handles[-1])
-        mark = self.driver.find_elements_by_xpath('//*[@id="tbody"]/tr/td/a')
-        self.show_info('文件数量为{}'.format(len(mark)))
-        self.dirlist = os.listdir(self.dirurl)
-        print(self.dirlist)
-        with open('{}\{}.txt'.format(self.dirurl,time.time()),'w',encoding='utf-8') as f:
-            f.write('{}'.format(self.driver.find_element_by_class_name('granule-details-info__content').text))
-
-
-
-
+        t = threading.Thread(target=self.findno)
+        t.setDaemon(True)
+        t.start()
 
     @pyqtSlot()
     def on_pushButton_3_clicked(self):
@@ -71,29 +62,48 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         t.start()
 
     def qiang(self):
-        self.driver.switch_to.window(self.driver.window_handles[-1])
-        mark = self.driver.find_elements_by_xpath('//*[@id="tbody"]/tr/td/a')
-        for var in mark:
-            if not var.get_attribute('href').rsplit('/')[-1] in self.dirlist:
-                var.click()
-                self.show_info('{}已下载'.format(var.get_attribute('href')))
-                time.sleep(2.5)
+        length = len(self.dirlist)
+        filelist = os.listdir(self.dirurl)
+        for url in self.dirlist:
+            if not url+'.txt' in filelist:
+                res = requests.get(self.url.format(url), headers=self.headers)
+                if res.status_code == 200:
+                    with open('{}\{}.txt'.format(self.dirurl,url),'w',encoding='utf-8') as f:
+                        f.write(res.text)
+                    self.show_info('{}.txt  已下载，目前还剩{}未下载'.format(url,length - self.dirlist.index(url) -1))
+                else:
+                    self.show_info('{}.txt  下载失败，已添加错误列表'.format(url))
+                    with open('{}\error.txt'.format(self.dirurl),'a',encoding='utf-8') as f:
+                        f.write(url)
             else:
-                self.show_info('{}已存在'.format(var.get_attribute('href')))
+                self.show_info('{}.txt  已下载'.format(url))
 
-
-
+    def findno(self):
+        while 1:
+            self.driver.switch_to.window(self.driver.window_handles[-1])
+            length = self.driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div/section/header/div[3]/div/div/span/span').text
+            imglist = self.driver.find_elements_by_xpath('//*[@id="app"]/div[1]/div/div/section/section/div/div/div[1]/div[2]/div/div/div/div/ul/li/div[2]/div[1]/img')
+            self.show_info('已发现{}数据包'.format(len(imglist)))
+            if not len(imglist) < int(length):
+                break
+        imglist = self.driver.find_elements_by_xpath(
+            '//*[@id="app"]/div[1]/div/div/section/section/div/div/div[1]/div[2]/div/div/div/div/ul/li/div[2]/div[1]/img')
+        self.dirlist = []
+        for img in imglist:
+            self.show_info(img.get_attribute('src').rsplit('/')[-1].rsplit('?')[0])
+            self.dirlist.append(img.get_attribute('src').rsplit('/')[-1].rsplit('?')[0])
+        else:
+            self.show_info('该页面发现{}个数据包'.format(len(self.dirlist)))
 
     @pyqtSlot()
     def on_pushButton_4_clicked(self):
         options = webdriver.ChromeOptions()
         prefs = {'profile.default_content_settings.popups': 0, 'download.default_directory': self.dirurl}
         options.add_experimental_option('prefs', prefs)
-        self.driver = webdriver.Chrome(chrome_options=options,executable_path='./chromedriver.exe')
+        self.driver = webdriver.Chrome(chrome_options=options, executable_path='./chromedriver.exe')
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36"
         }
-
 
 
 def main():
