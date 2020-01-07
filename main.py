@@ -78,6 +78,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         mark = self.driver.find_elements_by_xpath(
             '//*[@id="app"]/div[1]/div/div/section/section/div/div/div[1]/div[2]/div/div/div/div/ul/li/div[2]/a/img')
         url = 'https://cmr.earthdata.nasa.gov/search/concepts/{}.echo10?pretty=true'
+        no = len(mark)
+        no1 = 0
         for var in mark:
             name = var.get_attribute('src').rsplit('/')[-1].rsplit('?')[0]
             if not '{}.txt'.format(name) in self.dirlist:
@@ -90,6 +92,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.show_info('文件下载有误')
             else:
                 self.show_info('{}.txt 已存在'.format(name))
+            no1 += 1
+            self.show_info('剩余---{}'.format(no - no1))
 
     @pyqtSlot()
     def on_pushButton_4_clicked(self):
